@@ -9,13 +9,24 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-var userService = service.NewUserService()
-
-func GetAllUsers(c *gin.Context) {
-	c.JSON(http.StatusOK, userService.GetAllUsers())
+type UserHandler struct {
+	service *service.UserService // указатель на сервис
 }
 
-func GetUserByID(c *gin.Context) {
+func NewUserHandler(s *service.UserService) *UserHandler {
+	return &UserHandler{service: s}
+}
+
+func (h *UserHandler) GetAllUsers(c *gin.Context) {
+	users, err := h.service.GetAllUsers()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, users)
+}
+
+func (h *UserHandler) GetUserByID(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
@@ -23,7 +34,7 @@ func GetUserByID(c *gin.Context) {
 		return
 	}
 
-	user, err := userService.GetUserByID(id)
+	user, err := h.service.GetUserByID(id)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return
@@ -31,23 +42,22 @@ func GetUserByID(c *gin.Context) {
 	c.JSON(http.StatusOK, user)
 }
 
-func CreateUser(c *gin.Context) {
+func (h *UserHandler) CreateUser(c *gin.Context) {
 	var user models.User
 	if err := c.ShouldBindJSON(&user); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	createdUser, err := userService.CreateUser(user)
+	createdUser, err := h.service.CreateUser(user)
 	if err != nil {
 		c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
 		return
 	}
-
 	c.JSON(http.StatusCreated, createdUser)
 }
 
-func UpdateUser(c *gin.Context) {
+func (h *UserHandler) UpdateUser(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
@@ -55,22 +65,22 @@ func UpdateUser(c *gin.Context) {
 		return
 	}
 
-	var updatedUser models.User
-	if err := c.ShouldBindJSON(&updatedUser); err != nil {
+	var user models.User
+	if err := c.ShouldBindJSON(&user); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	user.ID = id
 
-	user, err := userService.UpdateUser(id, updatedUser)
+	err = h.service.UpdateUser(user)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return
 	}
-
 	c.JSON(http.StatusOK, user)
 }
 
-func DeleteUser(c *gin.Context) {
+func (h *UserHandler) DeleteUser(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
@@ -78,11 +88,10 @@ func DeleteUser(c *gin.Context) {
 		return
 	}
 
-	err = userService.DeleteUser(id)
+	err = h.service.DeleteUser(id)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return
 	}
-
 	c.JSON(http.StatusNoContent, nil)
 }
