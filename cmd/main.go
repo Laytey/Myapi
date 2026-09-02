@@ -1,6 +1,7 @@
 package main
 
 import (
+	"Myapi/internal/auth"
 	"Myapi/internal/handlers"
 	"Myapi/internal/repository"
 	"Myapi/internal/service"
@@ -18,19 +19,21 @@ func main() {
 	userRepo := repository.NewMemoryUserRepository()
 	userService := service.NewUserService(userRepo)
 	userHandler := handlers.NewUserHandler(userService)
+	authHandler := handlers.NewAuthHandler(userService)
 
-	r.GET("/tasks", handlers.GetAllTasks)
-	r.GET("/tasks/:id", handlers.GetTaskByID)
-	r.POST("/tasks", handlers.CreateTask)
-	r.PUT("/tasks/:id", handlers.UpdateTask)
-	r.DELETE("/tasks/:id", handlers.DeleteTask)
+	r.POST("/login", authHandler.Login)
+	r.POST("/users", userHandler.CreateUser) // регистрация без токена
 
-	// Маршруты
-	r.GET("/users", userHandler.GetAllUsers)
-	r.GET("/users/:id", userHandler.GetUserByID)
-	r.POST("/users", userHandler.CreateUser)
-	r.PUT("/users/:id", userHandler.UpdateUser)
-	r.DELETE("/users/:id", userHandler.DeleteUser)
+	protected := r.Group("/") // создаем подроутер, сперва работает AuthMiddleware, потом Profile, GetAllUsers ...
+	protected.Use(auth.AuthMiddleware)
+	{
+		protected.GET("/profile", authHandler.Profile)
+
+		protected.GET("/users", userHandler.GetAllUsers)
+		protected.GET("/users/:id", userHandler.GetUserByID)
+		protected.PUT("/users/:id", userHandler.UpdateUser)
+		protected.DELETE("/users/:id", userHandler.DeleteUser)
+	}
 
 	// запуск сервера
 	r.Run(":8080")

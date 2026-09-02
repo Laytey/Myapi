@@ -4,6 +4,7 @@ import (
 	"Myapi/internal/models"
 	"Myapi/internal/repository"
 	"errors"
+	"fmt"
 )
 
 type UserService struct {
@@ -34,7 +35,8 @@ func (s *UserService) CreateUser(user models.User) (models.User, error) {
 		}
 	}
 
-	err = s.repo.Save(user)
+	err = s.repo.Save(&user)
+	fmt.Println("Service returning user with ID:", user.ID)
 	return user, err
 }
 
@@ -52,4 +54,8 @@ func (s *UserService) UpdateUser(user models.User) error {
 
 func (s *UserService) DeleteUser(id int) error {
 	return s.repo.Delete(id)
+}
+
+func (s *UserService) GetUserByEmail(email string) (models.User, error) {
+	return s.repo.GetByEmail(email)
 }
