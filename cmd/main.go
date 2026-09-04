@@ -2,26 +2,51 @@ package main
 
 import (
 	"Myapi/internal/auth"
+	"Myapi/internal/db"
 	"Myapi/internal/handlers"
 	"Myapi/internal/repository"
 	"Myapi/internal/service"
+	"context"
+	"log"
+	"os"
 
 	"github.com/gin-gonic/gin"
 )
 
 func main() {
 	// новый роутер
-	r := gin.Default() // функция из gin, которая создаёт роутер с:
+	r := gin.Default()
+	// gin.Default() — это стандартный HTTP-маршрутизатор, который предоставляет базовые функции для обработки HTTP
+	// функция из gin, которая создаёт роутер с двумя middleware
 	// логированием (каждый запрос печатается в консоль)
 	// восстановлением после паники?
+	// попытка подключиться к PostgreSQL
+	connString := os.Getenv("DATABASE_URL")
+	// os - стандартный пакет Go для работы
+	// дает доступ к переменным окружения (Getenv), аргументам командной строки, файловой системе
+	if connString == "" {
+		connString = "postgres://user:password@localhost:5432/mydb?sslmode=disable"
+	}
+
+	storage, err := db.New(context.Background(), connString)
+
+	var userRepo repository.UserRepository
+
+	if err != nil {
+		log.Println("PostgreSQL not available, using memory storage")
+		userRepo = repository.NewMemoryUserRepository()
+	} else {
+		log.Println("Using PostgreSQL storage")
+		userRepo = repository.NewPostgresUserRepository(storage)
+	}
 
 	// Создаём зависимости
-	userRepo := repository.NewMemoryUserRepository()
+
 	userService := service.NewUserService(userRepo)
 	userHandler := handlers.NewUserHandler(userService)
 	authHandler := handlers.NewAuthHandler(userService)
 
-	r.POST("/login", authHandler.Login)
+	r.POST("/login", authHandler.Login)      // не защищаем, чтобы можно было зайти без токена и его получить
 	r.POST("/users", userHandler.CreateUser) // регистрация без токена
 
 	protected := r.Group("/") // создаем подроутер, сперва работает AuthMiddleware, потом Profile, GetAllUsers ...
