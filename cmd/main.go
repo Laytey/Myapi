@@ -32,18 +32,25 @@ func main() {
 
 	var userRepo repository.UserRepository
 
+	var taskRepo repository.TaskRepository
+
 	if err != nil {
 		log.Println("PostgreSQL not available, using memory storage")
 		userRepo = repository.NewMemoryUserRepository()
+		taskRepo = repository.NewMemoryTaskRepository()
 	} else {
 		log.Println("Using PostgreSQL storage")
 		userRepo = repository.NewPostgresUserRepository(storage)
+		taskRepo = repository.NewPostgresTaskRepository(storage)
 	}
+
+	userService := service.NewUserService(userRepo)
+	taskService := service.NewTaskService(taskRepo)
 
 	// Создаём зависимости
 
-	userService := service.NewUserService(userRepo)
 	userHandler := handlers.NewUserHandler(userService)
+	taskHandler := handlers.NewTaskHandler(taskService)
 	authHandler := handlers.NewAuthHandler(userService)
 
 	r.POST("/login", authHandler.Login)      // не защищаем, чтобы можно было зайти без токена и его получить
@@ -58,6 +65,12 @@ func main() {
 		protected.GET("/users/:id", userHandler.GetUserByID)
 		protected.PUT("/users/:id", userHandler.UpdateUser)
 		protected.DELETE("/users/:id", userHandler.DeleteUser)
+
+		protected.GET("/tasks", taskHandler.GetAllTasks)
+		protected.GET("/tasks/:id", taskHandler.GetTaskByID)
+		protected.POST("/tasks", taskHandler.CreateTask)
+		protected.PUT("/tasks/:id", taskHandler.UpdateTask)
+		protected.DELETE("/tasks/:id", taskHandler.DeleteTask)
 	}
 
 	// запуск сервера

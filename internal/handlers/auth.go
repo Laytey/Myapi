@@ -43,6 +43,15 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
+	c.SetCookie("token", token, 86400, "/", "", false, true)
+	// метод Gin для установки cookie в браузере клиента
+	// token-Сам JWT-токен (строка)
+	// Время жизни cookie в секундах 86400 (1 день)
+	//"/" домен не указан: действует для текущего хоста (localhost)
+	// "" домен, для которого действует cookie (пусто = текущий домен)
+	// false	Не требуем HTTPS (для локальной разработки)
+	// true	Защита: JavaScript не сможет прочитать этот cookie (не понятно)
+
 	c.JSON(http.StatusOK, gin.H{"token": token})
 }
 

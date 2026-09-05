@@ -17,7 +17,7 @@ func NewPostgresUserRepository(storage *db.Storage) *PostgresUserRepository {
 
 func (r *PostgresUserRepository) Save(user *models.User) error {
 	query := `INSERT INTO users (name, email, password) VALUES ($1, $2, $3) RETURNING id`
-	// $1, $2, $3 — это плейсхолдеры (места для подстановки). Они защищают от SQL-инъекций
+	// $1, $2, $3 — это плейсхолдеры (места для подстановки). Они защищают от SQL-инъекций- хз что значит...
 	// QueryRow выполняет запрос и возвращает одну строку результата (в этом случае id)
 	err := r.storage.Pool.QueryRow(context.Background(), query, user.Name, user.Email, user.Password).Scan(&user.ID)
 	//context.Background() создаёт пустой контекст
@@ -48,7 +48,7 @@ func (r *PostgresUserRepository) GetByEmail(email string) (models.User, error) {
 
 func (r *PostgresUserRepository) GetAll() ([]models.User, error) {
 	rows, err := r.storage.Pool.Query(context.Background(), `SELECT id, name, email, password FROM users`)
-	// Query	ожидает несколько строк, в отличие от QueryRow, который ждёт одну строку
+	// Query ожидает несколько строк, в отличие от QueryRow, который ждёт одну строку
 
 	if err != nil {
 		return nil, err
@@ -57,7 +57,7 @@ func (r *PostgresUserRepository) GetAll() ([]models.User, error) {
 
 	var users []models.User
 	for rows.Next() {
-		// Next переходит к следующей строке результата запросаи читает до тех пор, пока они есть
+		// Next переходит к следующей строке результата запроса и читает до тех пор, пока они есть
 		var u models.User
 		if err := rows.Scan(&u.ID, &u.Name, &u.Email, &u.Password); err != nil {
 			return nil, err
