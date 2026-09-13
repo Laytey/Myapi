@@ -1,0 +1,34 @@
+# Git
+.git
+.gitignore
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Документация - это Markdown файлы
+*.md
+LICENSE
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# Окружение
+.env
+
+# Логи
+*.log
+
+# Бинарники
+myapi
+*.exe
+
+# Временные файлы
+tmp/
+bin/
+
+# Тесты
+*_test.go

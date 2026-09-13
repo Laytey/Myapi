@@ -1,0 +1,58 @@
+# services — список сервисов, которые нужно запустить
+services:  # начало списка сервисов
+    postgres: #  имя сервиса
+        image: postgres:17 # какой образ использовать (скачать готовый образ)
+        container_name: myapi-postgres   # даем имя новому контейнеру
+
+        restart: unless-stopped
+        # если контейнер упадёт — Docker перезапустит его
+
+        ports:
+            - "5432:5432"
+
+        environment: # environment — переменные окружения (логин, пароль, БД)
+            POSTGRES_USER: pguser
+            POSTGRES_PASSWORD: pgpass
+            POSTGRES_DB: myapi_db
+
+        healthcheck:
+            test: ["CMD-SHELL", "pg_isready -U pguser -d myapi_db"] # проверка подключения к БД
+            interval: 5s # проверять каждые 5 секунд
+            timeout: 30s # ждать ответ 30 секунд
+            retries: 5  # 5 попыток
+
+
+        volumes: # volumes — хранилище
+            - pgdata:/var/lib/postgresql/data
+            # pgdata — имя тома, в котором будут хранится данные из PostgreSQL
+
+
+
+    migrate:
+        image: migrate/migrate # образ утилиты migrate, который умеет применять SQL-миграции (скачать готовый образ)
+        depends_on: # depends_on — при запуске migrate нужно запустить PostgreSQL
+
+            postgres:
+                condition: service_healthy # ожидание подключения 
+
+        volumes:
+            - ./internal/migrations:/migrations 
+
+        command: [
+            "-path", "/migrations", # где лежат миграции (внутри контейнера)
+            "-database", "postgres://pguser:pgpass@postgres:5432/myapi_db?sslmode=disable", 
+            # postgres — это имя сервиса в Docker-сети
+            "up" # применить все миграции
+        ]
+    myapi:
+        build: . # build- собрать образ из Dockerfile, точка - контекст сборки — текущая папка
+        depends_on:
+            migrate:
+                condition: service_completed_successfully
+        environment:
+            - DATABASE_URL=postgres://pguser:pgpass@postgres:5432/myapi_db?sslmode=disable
+        ports:
+            - "8080:8080" # можно обратиться к приложению через http://localhost:8080
+
+volumes:
+    pgdata:

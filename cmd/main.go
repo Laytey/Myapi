@@ -54,7 +54,7 @@ func main() {
 	authHandler := handlers.NewAuthHandler(userService)
 
 	r.POST("/login", authHandler.Login)      // не защищаем, чтобы можно было зайти без токена и его получить
-	r.POST("/users", userHandler.CreateUser) // регистрация без токена
+	r.POST("/users", userHandler.CreateUser) // регистрация тоже без токена
 
 	protected := r.Group("/") // создаем подроутер, сперва работает AuthMiddleware, потом Profile, GetAllUsers ...
 	protected.Use(auth.AuthMiddleware)
