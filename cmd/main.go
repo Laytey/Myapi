@@ -4,6 +4,7 @@ import (
 	"Myapi/internal/auth"
 	"Myapi/internal/db"
 	"Myapi/internal/handlers"
+	"Myapi/internal/middleware"
 	"Myapi/internal/repository"
 	"Myapi/internal/service"
 	"context"
@@ -52,6 +53,8 @@ func main() {
 	userHandler := handlers.NewUserHandler(userService)
 	taskHandler := handlers.NewTaskHandler(taskService)
 	authHandler := handlers.NewAuthHandler(userService)
+
+	r.Use(middleware.GzipMiddleware)
 
 	r.POST("/login", authHandler.Login)      // не защищаем, чтобы можно было зайти без токена и его получить
 	r.POST("/users", userHandler.CreateUser) // регистрация тоже без токена
