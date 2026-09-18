@@ -9,7 +9,11 @@ import (
 	"Myapi/internal/service"
 	"context"
 	"log"
+	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -77,5 +81,38 @@ func main() {
 	}
 
 	// запуск сервера
-	r.Run(":8080")
+	// r.Run(":8080")
+	srv := &http.Server{
+		Addr:    ":8080",
+		Handler: r,
+	}
+	// ListenAndServe() — блокирующий вызов, делавет 2 вещи
+	// открывает сетевой порт (:8080) и начинает слушать
+	// висит там навсегда — принимает запросы, обрабатывает их, но никогда не возвращает управление, пока сервер работает
+
+	// решение — горутина, которая запускает ListenAndServe в фоне, а main продолжает работу
+	// http.ErrServerClosed - не застрянет код?
+
+	// ttp.ErrServerClosed возвращается из ListenAndServe, когда сервер был остановлен через srv.Shutdown или srv.Close()
+	go func() {
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("ListenAndServe: %v", err)
+		}
+	}()
+
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM) // пишем в канал
+	//когда придёт SIGINT или SIGTERM, они отправятся в sigCh
+	// s.Interrupt — это константа, обозначающая сигнал SIGINT (Ctrl+C)
+	<-sigCh //читаем канал
+	// он блокирует горутину пока в канале не появится значение
+	log.Println("Получен сигнал завершения, начинаем graceful shutdown...")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := srv.Shutdown(ctx); err != nil {
+		log.Fatalf("Server forced to shutdown: %v", err)
+	}
+	log.Println("Сервер остановлен корректно") // Server gracefully shutdown
+
 }
