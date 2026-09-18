@@ -4,14 +4,43 @@ import (
 	"Myapi/internal/models"
 	"Myapi/internal/repository"
 	"errors"
+	"log"
+	"time"
 )
 
 type TaskService struct {
-	repo repository.TaskRepository
+	repo      repository.TaskRepository
+	cleanupCh chan struct{}
 }
 
 func NewTaskService(repo repository.TaskRepository) *TaskService {
-	return &TaskService{repo: repo}
+	s := &TaskService{
+		repo:      repo,
+		cleanupCh: make(chan struct{}, 10),
+		//для накопления 10 сигналов
+		//если буфер заполнен — значит, накопилось 10 событий
+	}
+	go s.cleanupWorker()
+	return s
+}
+
+func (s *TaskService) cleanupWorker() {
+	for range s.cleanupCh { //цикл, который работает бесконечно, пока канал не закрыт
+		time.Sleep(500 * time.Millisecond)
+		if len(s.cleanupCh) == cap(s.cleanupCh) {
+			log.Println("Канал заполнен, запускаем hard delete")
+			if err := s.repo.HardDelete(); err != nil {
+				//объявление + проверка в одной строке. err существует только внутри if/else
+				log.Println("Ошибка hard delete:", err)
+			} else {
+				log.Println("Hard delete выполнен успешно")
+			}
+			for len(s.cleanupCh) > 0 {
+				<-s.cleanupCh
+			}
+		}
+
+	}
 }
 
 func (s *TaskService) CreateTask(task models.Task) (models.Task, error) {
@@ -58,6 +87,9 @@ func (s *TaskService) DeleteTask(id int) error {
 	if err != nil {
 		return errors.New("task not found")
 	}
-
-	return s.repo.Delete(id)
+	if err := s.repo.Delete(id); err != nil {
+		return err
+	}
+	s.cleanupCh <- struct{}{}
+	return nil
 }

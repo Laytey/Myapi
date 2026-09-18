@@ -9,4 +9,5 @@ type TaskRepository interface {
 	GetAll() ([]models.Task, error)
 	Update(task models.Task) error
 	Delete(id int) error
+	HardDelete() error
 }

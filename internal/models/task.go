@@ -6,4 +6,5 @@ type Task struct {
 	Description string `json:"description"`
 	Status      string `json:"status"`
 	UserUID     string `json:"user_uid"`
+	Deleted     bool   `json:"deleted"`
 }
