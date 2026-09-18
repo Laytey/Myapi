@@ -26,8 +26,8 @@ func NewTaskService(repo repository.TaskRepository) *TaskService {
 
 func (s *TaskService) cleanupWorker() {
 	for range s.cleanupCh { //цикл, который работает бесконечно, пока канал не закрыт
-		time.Sleep(500 * time.Millisecond)
-		if len(s.cleanupCh) == cap(s.cleanupCh) {
+		time.Sleep(2 * time.Second)
+		if len(s.cleanupCh) >= cap(s.cleanupCh)-1 {
 			log.Println("Канал заполнен, запускаем hard delete")
 			if err := s.repo.HardDelete(); err != nil {
 				//объявление + проверка в одной строке. err существует только внутри if/else
