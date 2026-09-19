@@ -10,7 +10,10 @@ myapi
 *.test
 
 # Покрытие кода (файлы coverage)
+# ловит все файлы с расширением .out, включая coverage.out
 *.out
+coverage
+coverage.html
 
 # Зависимости (если используешь vendor)
 vendor/
@@ -33,3 +36,6 @@ vendor/
 # Временные файлы
 tmp/
 bin/
+
+# Личные заметки
+NOTES.md

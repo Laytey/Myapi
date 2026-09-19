@@ -36,7 +36,7 @@ func (s *TaskService) cleanupWorker() {
 				log.Println("Hard delete выполнен успешно")
 			}
 			for len(s.cleanupCh) > 0 {
-				<-s.cleanupCh
+				<-s.cleanupCh // вычитываем из канала - очистка
 			}
 		}
 
@@ -83,8 +83,9 @@ func (s *TaskService) UpdateTask(task models.Task) error {
 
 func (s *TaskService) DeleteTask(id int) error {
 	// Проверяем, существует ли задача
+	// не важно, что именно вернул GetByID - важно, что он вообще не должен найти задачу
 	_, err := s.repo.GetByID(id)
-	if err != nil {
+	if err != nil { // err == nil — если ошибки нет, значит нашёл
 		return errors.New("task not found")
 	}
 	if err := s.repo.Delete(id); err != nil {
@@ -92,4 +93,12 @@ func (s *TaskService) DeleteTask(id int) error {
 	}
 	s.cleanupCh <- struct{}{}
 	return nil
+}
+
+func NewTaskServiceForTest(repo repository.TaskRepository) *TaskService {
+	return &TaskService{
+		repo: repo,
+		// канал ссылочный тип -изменения в нём видны всем, кто держит копию структуры
+		cleanupCh: make(chan struct{}, 10),
+	}
 }
