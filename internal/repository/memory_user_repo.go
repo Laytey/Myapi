@@ -3,7 +3,6 @@ package repository
 import (
 	"Myapi/internal/models"
 	"errors"
-	"fmt"
 )
 
 type MemoryUserRepository struct {
@@ -22,7 +21,6 @@ func (r *MemoryUserRepository) Save(user *models.User) error {
 	user.ID = r.nextID
 	r.nextID++
 	r.users = append(r.users, *user)
-	fmt.Println("Save: user.ID =", user.ID)
 	return nil // возвращает error.nil
 }
 
