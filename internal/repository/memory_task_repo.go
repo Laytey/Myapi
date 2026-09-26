@@ -1,8 +1,9 @@
 package repository
 
 import (
-	"Myapi/internal/models"
 	"errors"
+
+	"Myapi/internal/models"
 )
 
 type MemoryTaskRepository struct {

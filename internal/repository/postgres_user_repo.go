@@ -1,10 +1,11 @@
 package repository
 
 import (
-	"Myapi/internal/db"
-	"Myapi/internal/models"
 	"context"
 	"errors"
+
+	"Myapi/internal/db"
+	"Myapi/internal/models"
 )
 
 type PostgresUserRepository struct {

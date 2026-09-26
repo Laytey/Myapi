@@ -1,10 +1,11 @@
 package handlers
 
 import (
-	"Myapi/internal/models"
-	"Myapi/internal/service"
 	"net/http"
 	"strconv"
+
+	"Myapi/internal/models"
+	"Myapi/internal/service"
 
 	"github.com/gin-gonic/gin"
 )

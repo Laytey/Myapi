@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"compress/gzip"
+	"log"
 	"net/http"
 	"strings"
 
@@ -27,7 +28,11 @@ func GzipMiddleware(c *gin.Context) {
 			return
 		}
 		c.Request.Body = gzipReader
-		defer gzipReader.Close() // закроется после завершения всей цепочки
+		defer func() {
+			if err := gzipReader.Close(); err != nil {
+				log.Printf("failed to close gzip reader: %v", err)
+			}
+		}() // закроется после завершения всей цепочки
 	}
 
 	// сжатие ответа (Accept-Encoding)
@@ -39,7 +44,11 @@ func GzipMiddleware(c *gin.Context) {
 
 	// создаем gzip-обертку для ответа
 	gz := gzip.NewWriter(c.Writer)
-	defer gz.Close() // важно: Close() дописывает остатки сжатых данных в поток
+	defer func() {
+		if err := gz.Close(); err != nil {
+			log.Printf("failed to close gzip writer: %v", err)
+		}
+	}() // важно: Close() дописывает остатки сжатых данных в поток
 
 	// подменяем Writer в контексте
 	c.Writer = &gzipWriter{

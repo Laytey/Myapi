@@ -1,10 +1,11 @@
 package repository
 
 import (
-	"Myapi/internal/db"
-	"Myapi/internal/models"
 	"context"
 	"errors"
+
+	"Myapi/internal/db"
+	"Myapi/internal/models"
 )
 
 type PostgresTaskRepository struct {
@@ -119,7 +120,9 @@ func (r *PostgresTaskRepository) HardDelete() error {
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback(context.Background())
+	defer func() {
+		_ = tx.Rollback(context.Background())
+	}()
 	// Rollback(ctx) закрывает соединение и отменяет транзакцию
 
 	_, err = tx.Exec(context.Background(), `DELETE FROM tasks WHERE deleted = true`)

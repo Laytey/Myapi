@@ -1,11 +1,12 @@
 package handlers
 
 import (
+	"net/http/httptest"
+	"testing"
+
 	"Myapi/internal/models"
 	"Myapi/internal/repository"
 	"Myapi/internal/service"
-	"net/http/httptest"
-	"testing"
 
 	"github.com/gin-gonic/gin"
 )
@@ -19,7 +20,9 @@ func BenchmarkGetAllTasks(b *testing.B) {
 
 	// создаём 10 задач в setup
 	for i := 0; i < 10; i++ {
-		svc.CreateTask(models.Task{Title: "Task", UserUID: "user1"})
+		if _, err := svc.CreateTask(models.Task{Title: "Task", UserUID: "user1"}); err != nil {
+			b.Fatalf("не удалось создать задачу: %v", err)
+		}
 	}
 
 	for b.Loop() {

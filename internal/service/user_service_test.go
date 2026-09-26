@@ -1,10 +1,11 @@
 package service
 
 import (
-	"Myapi/internal/models"
-	"Myapi/internal/repository/mocks"
 	"errors"
 	"testing"
+
+	"Myapi/internal/models"
+	"Myapi/internal/repository/mocks"
 
 	"github.com/stretchr/testify/mock"
 )

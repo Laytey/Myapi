@@ -1,9 +1,10 @@
 package service
 
 import (
+	"errors"
+
 	"Myapi/internal/models"
 	"Myapi/internal/repository"
-	"errors"
 )
 
 type UserService struct {

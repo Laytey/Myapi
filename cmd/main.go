@@ -1,12 +1,6 @@
 package main
 
 import (
-	"Myapi/internal/auth"
-	"Myapi/internal/db"
-	"Myapi/internal/handlers"
-	"Myapi/internal/middleware"
-	"Myapi/internal/repository"
-	"Myapi/internal/service"
 	"context"
 	"log"
 	"net/http"
@@ -14,6 +8,13 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
+
+	"Myapi/internal/auth"
+	"Myapi/internal/db"
+	"Myapi/internal/handlers"
+	"Myapi/internal/middleware"
+	"Myapi/internal/repository"
+	"Myapi/internal/service"
 
 	"github.com/gin-gonic/gin"
 )
