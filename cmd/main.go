@@ -2,14 +2,15 @@ package main
 
 import (
 	"context"
+	"flag"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"Myapi/internal/auth"
+	"Myapi/internal/config"
 	"Myapi/internal/db"
 	"Myapi/internal/handlers"
 	"Myapi/internal/middleware"
@@ -20,19 +21,25 @@ import (
 )
 
 func main() {
+
+	flag.Parse() // если не вызывать, то configPathShort и configPathLong останутся пустыми
+
+	cfg, err := config.Load(config.GetConfigPath())
+	if err != nil {
+		log.Fatalf("не удалось загрузить конфиг: %v", err)
+	}
+
+	auth.SetSecret(cfg.JWTSecret)
+
 	// новый роутер
+	gin.SetMode(cfg.GinMode)
 	r := gin.Default()
 	// gin.Default() — это стандартный HTTP-маршрутизатор, который предоставляет базовые функции для обработки HTTP
 	// функция из gin, которая создаёт роутер с двумя middleware
 	// логированием (каждый запрос печатается в консоль)
 	// восстановлением после паники?
 	// попытка подключиться к PostgreSQL
-	connString := os.Getenv("DATABASE_URL")
-	// os - стандартный пакет Go для работы
-	// дает доступ к переменным окружения (Getenv), аргументам командной строки, файловой системе
-	if connString == "" {
-		connString = "postgres://user:password@localhost:5432/mydb?sslmode=disable"
-	}
+	connString := cfg.DatabaseURL
 
 	storage, err := db.New(context.Background(), connString)
 
@@ -84,7 +91,7 @@ func main() {
 	// запуск сервера
 	// r.Run(":8080")
 	srv := &http.Server{
-		Addr:    ":8080",
+		Addr:    cfg.Port,
 		Handler: r,
 	}
 	// ListenAndServe() — блокирующий вызов, делавет 2 вещи
@@ -109,7 +116,7 @@ func main() {
 	// он блокирует горутину пока в канале не появится значение
 	log.Println("Получен сигнал завершения, начинаем graceful shutdown...")
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), cfg.ShutdownDuration())
 	defer cancel()
 	if err := srv.Shutdown(ctx); err != nil {
 		log.Fatalf("Server forced to shutdown: %v", err)

@@ -7,7 +7,11 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-var secret = []byte("jwt-secret-word")
+var secret []byte
+
+func SetSecret(s string) {
+	secret = []byte(s)
+}
 
 // глобальная переменная для пакета,
 // []byte превращает строку в слайс байтов

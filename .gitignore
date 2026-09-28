@@ -39,3 +39,8 @@ bin/
 
 # Личные заметки
 NOTES.md
+
+# Конфиги (личные настройки)
+config.json
+config2.json
+*.local.json
