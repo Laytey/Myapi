@@ -44,3 +44,5 @@ NOTES.md
 config.json
 config2.json
 *.local.json
+
+*.pem

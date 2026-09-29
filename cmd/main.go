@@ -103,7 +103,15 @@ func main() {
 
 	// ttp.ErrServerClosed возвращается из ListenAndServe, когда сервер был остановлен через srv.Shutdown или srv.Close()
 	go func() {
-		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		var err error
+		if cfg.EnableHTTPS {
+			log.Println("HTTPS включён, используем TLS")
+			err = srv.ListenAndServeTLS("cert.pem", "key.pem")
+		} else {
+			log.Println("HTTPS выключен, используем HTTP")
+			err = srv.ListenAndServe()
+		}
+		if err != nil && err != http.ErrServerClosed {
 			log.Fatalf("ListenAndServe: %v", err)
 		}
 	}()

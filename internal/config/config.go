@@ -7,6 +7,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strconv"
 	"time"
 )
 
@@ -17,6 +18,7 @@ type Config struct {
 	JWTSecret       string `json:"jwt_secret"`
 	ShutdownTimeout int    `json:"shutdown_timeout"`
 	GinMode         string `json:"gin_mode"`
+	EnableHTTPS     bool   `json:"enable_https"`
 }
 
 // Default возвращает конфигурацию со значениями по умолчанию.
@@ -30,6 +32,7 @@ func Default() Config {
 		JWTSecret:       "change-me",
 		ShutdownTimeout: 5,
 		GinMode:         "debug",
+		EnableHTTPS:     false,
 	}
 }
 
@@ -37,18 +40,25 @@ func Default() Config {
 // Если файл не существует — возвращает дефолтную конфигурацию
 // без ошибки. Если файл невалиден — возвращает ошибку.
 func Load(path string) (Config, error) {
-
 	cfg := Default()
+
 	data, err := os.ReadFile(path)
 	if err != nil {
-		if os.IsNotExist(err) {
-			return cfg, nil
+		if !os.IsNotExist(err) {
+			return cfg, fmt.Errorf("не удалось прочитать конфиг: %w", err)
 		}
-		return cfg, fmt.Errorf("не удалось прочитать конфиг: %w", err)
+		// файла нет - но env и флаги всё равно применяем
+	} else {
+		// файл есть - парсим
+		if err := json.Unmarshal(data, &cfg); err != nil {
+			return cfg, fmt.Errorf("не удалось распарсить конфиг: %w", err)
+		}
 	}
-	if err := json.Unmarshal(data, &cfg); err != nil {
-		return cfg, fmt.Errorf("не удалось распарсить конфиг: %w", err)
-	}
+
+	// Порядок: файл - env - флаги (каждый следующий перезаписывает)
+	applyEnv(&cfg)
+	applyFlags(&cfg)
+
 	return cfg, nil
 }
 
@@ -62,6 +72,7 @@ func (c Config) ShutdownDuration() time.Duration {
 var (
 	configPathShort string
 	configPathLong  string
+	enableHTTPS     bool
 )
 
 func init() {
@@ -69,6 +80,7 @@ func init() {
 	// flag.Parse() - прочитай флаги из os.Args
 	flag.StringVar(&configPathShort, "c", "", "путь к файлу конфигурации")
 	flag.StringVar(&configPathLong, "config", "", "путь к файлу конфигурации")
+	flag.BoolVar(&enableHTTPS, "s", false, "включить HTTPS")
 }
 
 // GetConfigPath определяет путь к файлу конфигурации.
@@ -88,4 +100,22 @@ func GetConfigPath() string {
 		return env
 	}
 	return "config.json"
+}
+
+// applyEnv перезаписывает поля Config значениями из переменных окружения.
+// Вызывается после чтения файла, но до применения флагов.
+func applyEnv(cfg *Config) {
+	if v := os.Getenv("ENABLE_HTTPS"); v != "" {
+		if b, err := strconv.ParseBool(v); err == nil {
+			cfg.EnableHTTPS = b
+		}
+	}
+}
+
+// applyFlags перезаписывает поля Config значениями из флагов.
+// Флаги имеют наивысший приоритет.
+func applyFlags(cfg *Config) {
+	if enableHTTPS {
+		cfg.EnableHTTPS = true
+	}
 }
