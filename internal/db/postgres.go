@@ -1,3 +1,6 @@
+// Package db предоставляет подключение к PostgreSQL через пул
+// соединений pgxpool
+// с автоматическими retry-попытками.
 package db
 
 import (
@@ -14,11 +17,23 @@ const ( // нельзя изменить после объявления
 	retryDelay = 2 * time.Second // задержка между попытками
 )
 
+// Storage хранит пул соединений с PostgreSQL.
+//
+// Пул потокобезопасен и может использоваться из нескольких горутин
+// одновременно. Соединения берутся из пула и возвращаются в него
+// автоматически после завершения запроса.
 type Storage struct {
 	Pool *pgxpool.Pool
-	// Storage хранит пул соединений (*pgxpool.Pool)
 }
 
+// New создаёт пул соединений с PostgreSQL и проверяет подключение.
+// Делает до maxRetries попыток с задержкой retryDelay между ними.
+//
+// dsn — строка подключения в формате PostgreSQL DSN
+// (например: "postgres://user:pass@localhost:5432/dbname?sslmode=disable").
+//
+// Возвращает ошибку, если все попытки подключения провалились
+// или если не удалось распарсить dsn.
 func New(ctx context.Context, dsn string) (*Storage, error) {
 	// Data Source Name (имя источника данных)
 	// dsn — это строка подключения к базе данных. Она приходит из main.go (из переменной окружения DATABASE_URL)
