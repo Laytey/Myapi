@@ -1,3 +1,6 @@
+// Package handlers содержит HTTP-обработчики (хендлеры) для Gin.
+// Хендлеры принимают HTTP-запросы, вызывают сервисный слой и
+// формируют HTTP-ответы. Не содержат бизнес-логики.
 package handlers
 
 import (
@@ -10,16 +13,27 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// TaskHandler обрабатывает HTTP-запросы, связанные с задачами.
+//
+// Делегирует всю бизнес-логику в TaskService. Проверяет
+// аутентификацию (через контекст Gin, установленный AuthMiddleware)
+// и права доступа пользователя к задачам.
 type TaskHandler struct {
 	service *service.TaskService
 }
 
+// NewTaskHandler создаёт хендлер задач с указанным сервисом.
 func NewTaskHandler(service *service.TaskService) *TaskHandler {
 	return &TaskHandler{service: service}
 }
 
-// возвращаем все задачи - клиент запрашивает данные
-// Теперь: только задачи текущего пользователя
+// GetAllTasks обрабатывает GET /tasks.
+// Возвращает список задач текущего пользователя (из контекста Gin).
+//
+// Ответы:
+//   - 401 Unauthorized — если userID отсутствует в контексте.
+//   - 500 Internal Server Error — при ошибке сервиса.
+//   - 200 OK — список задач в JSON.
 func (h *TaskHandler) GetAllTasks(c *gin.Context) {
 	// Получаем UID текущего пользователя из контекста
 	uid, exists := c.Get("userID")
@@ -44,7 +58,14 @@ func (h *TaskHandler) GetAllTasks(c *gin.Context) {
 	c.JSON(http.StatusOK, tasks)
 }
 
-// GET /tasks/:id — получить задачу по ID
+// GetTaskByID обрабатывает GET /tasks/:id.
+// Возвращает задачу по ID, если она принадлежит текущему пользователю.
+//
+// Ответы:
+//   - 400 Bad Request — если ID не число.
+//   - 404 Not Found — если задача не найдена.
+//   - 403 Forbidden — если задача принадлежит другому пользователю.
+//   - 200 OK — задача в JSON.
 func (h *TaskHandler) GetTaskByID(c *gin.Context) {
 	idStr := c.Param("id") // извлекает параметр id из URL?
 	id, err := strconv.Atoi(idStr)
@@ -72,7 +93,15 @@ func (h *TaskHandler) GetTaskByID(c *gin.Context) {
 	c.JSON(http.StatusOK, task)
 }
 
-// создаём новую задачу - POST
+// CreateTask обрабатывает POST /tasks.
+// Создаёт новую задачу, привязанную к текущему пользователю.
+//
+// Тело запроса — JSON с полями title, description, status.
+//
+// Ответы:
+//   - 400 Bad Request — если JSON некорректен или title пустой.
+//   - 401 Unauthorized — если userID отсутствует.
+//   - 201 Created — созданная задача.
 func (h *TaskHandler) CreateTask(c *gin.Context) {
 	var task models.Task
 
@@ -111,7 +140,14 @@ func (h *TaskHandler) CreateTask(c *gin.Context) {
 	c.JSON(http.StatusCreated, createdTask)
 }
 
-// PUT /tasks/:id — обновить задачу
+// UpdateTask обрабатывает PUT /tasks/:id.
+// Обновляет задачу, если она принадлежит текущему пользователю.
+//
+// Ответы:
+//   - 400 Bad Request — если ID или JSON некорректны.
+//   - 404 Not Found — если задача не найдена.
+//   - 403 Forbidden — если задача принадлежит другому пользователю.
+//   - 200 OK — обновлённая задача.
 func (h *TaskHandler) UpdateTask(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
@@ -161,7 +197,14 @@ func (h *TaskHandler) UpdateTask(c *gin.Context) {
 	c.JSON(http.StatusOK, existingTask)
 }
 
-// DELETE /tasks/:id — удалить задачу
+// DeleteTask обрабатывает DELETE /tasks/:id.
+// Выполняет soft-delete задачи, если она принадлежит текущему пользователю.
+//
+// Ответы:
+//   - 400 Bad Request — если ID не число.
+//   - 404 Not Found — если задача не найдена.
+//   - 403 Forbidden — если задача принадлежит другому пользователю.
+//   - 204 No Content — успешное удаление.
 func (h *TaskHandler) DeleteTask(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
