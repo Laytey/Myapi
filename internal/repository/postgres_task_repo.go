@@ -8,14 +8,24 @@ import (
 	"Myapi/internal/models"
 )
 
+// PostgresTaskRepository — реализация TaskRepository на PostgreSQL
+// через пул соединений pgxpool.
+//
+// Потокобезопасна: каждое соединение берётся из пула и не используется
+// параллельно двумя горутинами. Данные сохраняются между перезапусками.
 type PostgresTaskRepository struct {
 	storage *db.Storage
 }
 
+// NewPostgresTaskRepository создаёт репозиторий, использующий
+// переданный пул соединений с PostgreSQL.
 func NewPostgresTaskRepository(storage *db.Storage) *PostgresTaskRepository {
 	return &PostgresTaskRepository{storage: storage}
 }
 
+// Save реализует TaskRepository.Save.
+// Вставляет новую строку в таблицу tasks. ID генерируется БД
+// через SERIAL и возвращается через RETURNING id.
 func (r *PostgresTaskRepository) Save(task *models.Task) error {
 	query := `INSERT INTO tasks (title, description, status, user_uid) VALUES ($1, $2, $3, $4) RETURNING id`
 	err := r.storage.Pool.QueryRow(
@@ -29,6 +39,9 @@ func (r *PostgresTaskRepository) Save(task *models.Task) error {
 	return err
 }
 
+// GetByID реализует TaskRepository.GetByID.
+// Возвращает ошибку "task not found", если задача не найдена
+// или помечена удалённой (deleted = true).
 func (r *PostgresTaskRepository) GetByID(id int) (models.Task, error) {
 	query := `SELECT id, title, description, status, user_uid FROM tasks WHERE id = $1 AND deleted = false`
 
@@ -46,6 +59,8 @@ func (r *PostgresTaskRepository) GetByID(id int) (models.Task, error) {
 	return task, nil
 }
 
+// GetByUserUID реализует TaskRepository.GetByUserUID.
+// Возвращает только активные задачи (deleted = false).
 func (r *PostgresTaskRepository) GetByUserUID(uid string) ([]models.Task, error) {
 	query := `SELECT id, title, description, status, user_uid FROM tasks WHERE user_uid = $1 AND deleted = false`
 
@@ -66,6 +81,8 @@ func (r *PostgresTaskRepository) GetByUserUID(uid string) ([]models.Task, error)
 	return tasks, nil
 }
 
+// GetAll реализует TaskRepository.GetAll.
+// Возвращает только активные задачи (deleted = false).
 func (r *PostgresTaskRepository) GetAll() ([]models.Task, error) {
 	query := `SELECT id, title, description, status, user_uid FROM tasks WHERE deleted = false`
 
@@ -86,6 +103,8 @@ func (r *PostgresTaskRepository) GetAll() ([]models.Task, error) {
 	return tasks, nil
 }
 
+// Update реализует TaskRepository.Update.
+// Обновляет все поля задачи, кроме ID и deleted.
 func (r *PostgresTaskRepository) Update(task models.Task) error {
 	query := `UPDATE tasks SET title = $1, description = $2, status = $3, user_uid = $4 WHERE id = $5`
 	_, err := r.storage.Pool.Exec(
@@ -100,6 +119,9 @@ func (r *PostgresTaskRepository) Update(task models.Task) error {
 	return err
 }
 
+// Delete реализует TaskRepository.Delete.
+// Выполняет soft-delete: UPDATE tasks SET deleted = true.
+// Задача остаётся в таблице, но не возвращается в GetByID/GetAll.
 func (r *PostgresTaskRepository) Delete(id int) error {
 	_, err := r.storage.Pool.Exec(
 		context.Background(),
@@ -109,11 +131,9 @@ func (r *PostgresTaskRepository) Delete(id int) error {
 	return err
 }
 
-// Scan:
-// Получает данные из результата запроса.
-// Преобразует их в нужный тип.
-// Записывает в переменную, на которую указывает переданный указатель.
-
+// HardDelete реализует TaskRepository.HardDelete.
+// Физически удаляет все задачи с deleted = true в одной транзакции.
+// При ошибке — откат через Rollback (defer).
 func (r *PostgresTaskRepository) HardDelete() error {
 	tx, err := r.storage.Pool.Begin(context.Background())
 	// Begin берёт соединение из пула и помечает его как «в транзакции»
@@ -123,7 +143,7 @@ func (r *PostgresTaskRepository) HardDelete() error {
 	defer func() {
 		_ = tx.Rollback(context.Background())
 	}()
-	// Rollback(ctx) закрывает соединение и отменяет транзакцию
+	// Rollback отменяет транзакцию и возвращает соединение в пул
 
 	_, err = tx.Exec(context.Background(), `DELETE FROM tasks WHERE deleted = true`)
 	// Exec выполняет SQL-запрос и возвращает количество измененных строк
