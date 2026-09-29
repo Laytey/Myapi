@@ -1,3 +1,5 @@
+// Package config предоставляет загрузку конфигурации приложения
+// из JSON-файла с учётом приоритетов источников.
 package config
 
 import (
@@ -8,6 +10,7 @@ import (
 	"time"
 )
 
+// Config хранит настройки приложения.
 type Config struct {
 	Port            string `json:"port"`
 	DatabaseURL     string `json:"database_url"`
@@ -16,9 +19,11 @@ type Config struct {
 	GinMode         string `json:"gin_mode"`
 }
 
-// context.WithTimeout требует time.Duration, а не int
-
+// Default возвращает конфигурацию со значениями по умолчанию.
+// Используется как основа, если файл конфигурации не задан
+// или задан частично.
 func Default() Config {
+
 	return Config{
 		Port:            ":8080",
 		DatabaseURL:     "postgres://user:password@localhost:5432/mydb?sslmode=disable",
@@ -28,7 +33,11 @@ func Default() Config {
 	}
 }
 
+// Load читает конфигурацию из JSON-файла по указанному пути.
+// Если файл не существует — возвращает дефолтную конфигурацию
+// без ошибки. Если файл невалиден — возвращает ошибку.
 func Load(path string) (Config, error) {
+
 	cfg := Default()
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -43,6 +52,9 @@ func Load(path string) (Config, error) {
 	return cfg, nil
 }
 
+// ShutdownDuration возвращает таймаут graceful shutdown
+// в формате time.Duration.
+// context.WithTimeout требует time.Duration, а не int.
 func (c Config) ShutdownDuration() time.Duration {
 	return time.Duration(c.ShutdownTimeout) * time.Second
 }
@@ -53,13 +65,15 @@ var (
 )
 
 func init() {
+	// flag.StringVar - зарегистрируй флаг
+	// flag.Parse() - прочитай флаги из os.Args
 	flag.StringVar(&configPathShort, "c", "", "путь к файлу конфигурации")
 	flag.StringVar(&configPathLong, "config", "", "путь к файлу конфигурации")
 }
 
-// flag.StringVar - зарегистрируй флаг
-// flag.Parse() - прочитай флаги из os.Args
-
+// GetConfigPath определяет путь к файлу конфигурации.
+// Приоритет: флаг -c/-config → переменная окружения CONFIG →
+// дефолтное значение "config.json".
 func GetConfigPath() string {
 	// flag.Parse() уже вызвали в main до этого (можно вызвать один раз за программу)
 	// если flag.Parse() не вызвать — флаги не заполнятся
