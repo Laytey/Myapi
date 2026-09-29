@@ -7,6 +7,15 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// AuthMiddleware проверяет наличие и валидность JWT в запросе.
+//
+// Токен ищется в двух местах (в порядке приоритета):
+//  1. Заголовок Authorization: "Bearer <token>".
+//  2. Cookie с именем "token".
+//
+// При успехе сохраняет userID в контексте Gin (ctx.Set("userID", ...))
+// и передаёт управление следующему хендлеру.
+// При ошибке прерывает запрос с кодом 401 Unauthorized.
 func AuthMiddleware(ctx *gin.Context) {
 	var token string
 

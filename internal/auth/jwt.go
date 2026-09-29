@@ -1,3 +1,5 @@
+// Package auth предоставляет JWT-аутентификацию: генерацию и проверку
+// токенов, а также middleware для защиты маршрутов.
 package auth
 
 import (
@@ -9,18 +11,32 @@ import (
 
 var secret []byte
 
+// SetSecret устанавливает секретный ключ для подписи и проверки JWT.
+// Должен быть вызван один раз при старте приложения (обычно в main)
+// до первого вызова GenerateToken или ParseToken.
+//
+// Без установленного секрета токены подписываются пустым ключом —
+// это небезопасно и подходит только для тестов.
 func SetSecret(s string) {
 	secret = []byte(s)
 }
 
-// глобальная переменная для пакета,
-// []byte превращает строку в слайс байтов
-// "jwt-secret-word" ключ
+// Claims описывает полезную нагрузку JWT, используемую в приложении.
+//
+// Содержит UserID (строка) и стандартные поля jwt.RegisteredClaims:
+// exp (время истечения), iat (время выпуска) и другие.
 type Claims struct {
 	UserID               string `json:"user_id"` // тег: при превращении в JSON назовет это поле user_id
 	jwt.RegisteredClaims        // структура из пакета jwt, стандартные поля: exp, iat, iss, aud
 }
 
+// GenerateToken создаёт и подписывает JWT для указанного пользователя.
+//
+// userID — идентификатор пользователя (в строковом виде).
+// exp — время жизни токена (например, 24 * time.Hour).
+//
+// Возвращает подписанную строку токена или ошибку.
+// Требует предварительного вызова SetSecret.
 func GenerateToken(userID string, exp time.Duration) (string, error) {
 	// exp	Expiration Time	Когда токен истечёт
 	// exp time.Duration - время жизни токена
@@ -34,7 +50,7 @@ func GenerateToken(userID string, exp time.Duration) (string, error) {
 		},
 	}
 	token := jwt.NewWithClaims( // NewWithClaimsем новый JWT-токен
-		jwt.SigningMethodHS256, // алгоритм подписи токена с использованием общего секрета (симметричное шифрование) хз что это
+		jwt.SigningMethodHS256, // алгоритм подписи токена с использованием общего секрета (симметричное шифрование)
 		// симмитричное шифрование - для шифровки и расшифровки нужен один и тот же ключ
 		claims,
 	)
@@ -42,6 +58,10 @@ func GenerateToken(userID string, exp time.Duration) (string, error) {
 	// подписывает токен и превращает в строку, в заголовке HTTP-запроса можно передавать только текст
 }
 
+// ParseToken проверяет подпись JWT и извлекает из него Claims.
+//
+// Возвращает ошибку, если токен некорректен, подпись не совпадает,
+// или срок действия истёк.
 func ParseToken(tokenStr string) (*Claims, error) {
 	claims := &Claims{}
 	token, err := jwt.ParseWithClaims(tokenStr, claims, func(t *jwt.Token) (any, error) {
