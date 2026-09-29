@@ -1,3 +1,4 @@
+// Package middleware содержит HTTP-middleware для Gin.
 package middleware
 
 import (
@@ -19,6 +20,21 @@ func (w *gzipWriter) Write(data []byte) (int, error) {
 	return w.gz.Write(data)
 }
 
+// GzipMiddleware включает поддержку gzip: распаковывает тело запроса
+// (если задан Content-Encoding: gzip) и сжимает ответ (если клиент
+// прислал Accept-Encoding: gzip).
+//
+// При распаковке запроса:
+//   - Если заголовок Content-Encoding равен "gzip" — тело оборачивается
+//     в gzip.Reader, который распаковывает данные по мере чтения.
+//   - Если тело повреждено — возвращается 400 Bad Request.
+//
+// При сжатии ответа:
+//   - Если клиент не поддерживает gzip — запрос пропускается без изменений.
+//   - Иначе c.Writer оборачивается в gzipWriter, заголовки
+//     Content-Encoding: gzip и Vary: Accept-Encoding устанавливаются.
+//
+// Middleware прозрачен для хендлеров: они работают с обычными данными.
 func GzipMiddleware(c *gin.Context) {
 	//распаковка запроса (Content-Encoding)
 	if c.GetHeader("Content-Encoding") == "gzip" {
