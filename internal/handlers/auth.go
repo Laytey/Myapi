@@ -12,14 +12,34 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// AuthHandler обрабатывает HTTP-запросы аутентификации и профиля.
+//
+// Делегирует работу с пользователями в UserService. Не содержит
+// бизнес-логики - только координацию: парсинг, вызов сервиса,
+// формирование ответа.
+//
+// NOTE: пароли в этой реализации сравниваются в открытом виде
+// (в UserService.CreateUser). В рабочих проектах требуется хеширование. Обратить внимание.
 type AuthHandler struct {
 	userService *service.UserService
 }
 
+// NewAuthHandler создаёт хендлер аутентификации с указанным сервисом.
 func NewAuthHandler(userService *service.UserService) *AuthHandler {
 	return &AuthHandler{userService: userService}
 }
 
+// Login обрабатывает POST /login.
+// Проверяет email и пароль, при успехе генерирует JWT и устанавливает
+// его как cookie "token" (HttpOnly).
+//
+// Тело запроса — JSON с полями email, password.
+//
+// Ответы:
+//   - 400 Bad Request — если JSON некорректен.
+//   - 401 Unauthorized — если email или пароль не совпадают.
+//   - 500 Internal Server Error — при ошибке генерации токена.
+//   - 200 OK — {"token": "<jwt>"} + cookie "token".
 func (h *AuthHandler) Login(c *gin.Context) {
 	var req models.LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -51,11 +71,23 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	//"/" домен не указан: действует для текущего хоста (localhost)
 	// "" домен, для которого действует cookie (пусто = текущий домен)
 	// false	Не требуем HTTPS (для локальной разработки)
-	// true	Защита: JavaScript не сможет прочитать этот cookie (не понятно)
+	// true	Защита: JavaScript не сможет прочитать этот cookie
 
 	c.JSON(http.StatusOK, gin.H{"token": token})
 }
 
+// Profile обрабатывает GET /profile.
+// Возвращает профиль текущего аутентифицированного пользователя.
+//
+// Требует, чтобы AuthMiddleware установил userID в контексте Gin.
+//
+// Возвращает только публичные поля (id, name, email) — без password.
+//
+// Ответы:
+//   - 401 Unauthorized — если userID отсутствует.
+//   - 400 Bad Request — если userID не число.
+//   - 404 Not Found — если пользователь не найден.
+//   - 200 OK — {"id": ..., "name": ..., "email": ...}.
 func (h *AuthHandler) Profile(c *gin.Context) {
 	userID, exists := c.Get("userID")
 	if !exists {
